@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from blog.models import Comment, Post, Tag
 
+MOST_POPULAR_POSTS_ON_PAGE = 5
+
 
 def get_related_posts_count(tag):
     return tag.posts.count()
@@ -27,9 +29,22 @@ def serialize_tag(tag):
     }
 
 
+def get_likes_count(post):
+    return post.likes.count()
+
+
 def index(request):
 
-    most_popular_posts = []  # TODO. Как это посчитать?
+    most_popular_posts = []
+
+    posts_likes_dict = {}
+    for post in Post.objects.all():
+        posts_likes_dict[get_likes_count(post)] = post
+
+    for likes_count in reversed(sorted(posts_likes_dict)):
+        most_popular_posts.append(posts_likes_dict[likes_count])
+        if len(most_popular_posts) == MOST_POPULAR_POSTS_ON_PAGE:
+            break
 
     fresh_posts = Post.objects.order_by('published_at')
     most_fresh_posts = list(fresh_posts)[-5:]
@@ -39,7 +54,8 @@ def index(request):
     most_popular_tags = popular_tags[-5:]
 
     context = {
-        'most_popular_posts': [serialize_post(post) for post in most_popular_posts],
+        'most_popular_posts': [serialize_post(post) for post in
+                               most_popular_posts],
         'page_posts': [serialize_post(post) for post in most_fresh_posts],
         'popular_tags': [serialize_tag(tag) for tag in most_popular_tags],
     }
@@ -82,7 +98,8 @@ def post_detail(request, slug):
     context = {
         'post': serialized_post,
         'popular_tags': [serialize_tag(tag) for tag in most_popular_tags],
-        'most_popular_posts': [serialize_post(post) for post in most_popular_posts],
+        'most_popular_posts': [serialize_post(post) for post in
+                               most_popular_posts],
     }
     return render(request, 'post-details.html', context)
 
@@ -102,7 +119,8 @@ def tag_filter(request, tag_title):
         "tag": tag.title,
         'popular_tags': [serialize_tag(tag) for tag in most_popular_tags],
         "posts": [serialize_post(post) for post in related_posts],
-        'most_popular_posts': [serialize_post(post) for post in most_popular_posts],
+        'most_popular_posts': [serialize_post(post) for post in
+                               most_popular_posts],
     }
     return render(request, 'posts-list.html', context)
 
