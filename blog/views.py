@@ -2,8 +2,6 @@ from django.db.models import Count
 from django.shortcuts import render
 from blog.models import Comment, Post, Tag
 
-MOST_POPULAR_POSTS_ON_PAGE = 5
-
 
 def get_related_posts_count(tag):
     return tag.posts.count()
@@ -37,14 +35,13 @@ def get_likes_count(post):
 def index(request):
 
     most_popular_posts = Post.objects.annotate(Count('likes')).order_by(
-        'likes__count').reverse()[:MOST_POPULAR_POSTS_ON_PAGE]
+        'likes__count').reverse()[:5]
 
     fresh_posts = Post.objects.order_by('published_at')
     most_fresh_posts = list(fresh_posts)[-5:]
 
-    tags = Tag.objects.all()
-    popular_tags = sorted(tags, key=get_related_posts_count)
-    most_popular_tags = popular_tags[-5:]
+    most_popular_tags = Tag.objects.annotate(Count('posts')).order_by(
+        'posts__count').reverse()[:5]
 
     context = {
         'most_popular_posts': [serialize_post(post) for post in
@@ -82,11 +79,11 @@ def post_detail(request, slug):
         "tags": [serialize_tag(tag) for tag in related_tags],
     }
 
-    all_tags = Tag.objects.all()
-    popular_tags = sorted(all_tags, key=get_related_posts_count)
-    most_popular_tags = popular_tags[-5:]
+    most_popular_tags = Tag.objects.annotate(Count('posts')).order_by(
+        'posts__count').reverse()[:5]
 
-    most_popular_posts = []  # TODO. Как это посчитать?
+    most_popular_posts = Post.objects.annotate(Count('likes')).order_by(
+        'likes__count').reverse()[:5]
 
     context = {
         'post': serialized_post,
@@ -100,11 +97,11 @@ def post_detail(request, slug):
 def tag_filter(request, tag_title):
     tag = Tag.objects.get(title=tag_title)
 
-    all_tags = Tag.objects.all()
-    popular_tags = sorted(all_tags, key=get_related_posts_count)
-    most_popular_tags = popular_tags[-5:]
+    most_popular_tags = Tag.objects.annotate(Count('posts')).order_by(
+        'posts__count').reverse()[:5]
 
-    most_popular_posts = []  # TODO. Как это посчитать?
+    most_popular_posts = Post.objects.annotate(Count('likes')).order_by(
+        'likes__count').reverse()[:5]
 
     related_posts = tag.posts.all()[:20]
 
