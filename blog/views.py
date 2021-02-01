@@ -36,16 +36,8 @@ def get_likes_count(post):
 
 def index(request):
 
-    most_popular_posts = []
-
-    posts_likes_dict = {}
-    for post in Post.objects.annotate(Count('likes')):
-        posts_likes_dict[get_likes_count(post)] = post
-
-    for likes_count in reversed(sorted(posts_likes_dict)):
-        most_popular_posts.append(posts_likes_dict[likes_count])
-        if len(most_popular_posts) == MOST_POPULAR_POSTS_ON_PAGE:
-            break
+    most_popular_posts = Post.objects.annotate(Count('likes')).order_by(
+        'likes__count').reverse()[:MOST_POPULAR_POSTS_ON_PAGE]
 
     fresh_posts = Post.objects.order_by('published_at')
     most_fresh_posts = list(fresh_posts)[-5:]
