@@ -1,6 +1,56 @@
 from django.db import models
+from django.db.models import Count
 from django.urls import reverse
 from django.contrib.auth.models import User
+
+
+class PostQuerySet(models.QuerySet):
+
+    def year(self, year):
+        posts_at_year = self.filter(published_at__year=year).order_by(
+            'published_at')
+        return posts_at_year
+
+    def popular(self):
+        most_popular_posts = self.annotate(
+            likes_count=Count('likes')).order_by(
+            '-likes_count')
+        return most_popular_posts
+
+    def fetch_with_comments_count(self):
+        most_popular_posts_ids = [post.id for post in self]
+        posts_with_comments = Post.objects.filter(
+            id__in=most_popular_posts_ids).annotate(
+            comments_count=Count('comments'))
+        ids_and_comments = posts_with_comments.values_list('id',
+                                                           'comments_count')
+        count_for_id = dict(ids_and_comments)
+        for post in self:
+            post.comments_count = count_for_id[post.id]
+        return list(self)
+
+    def popular_with_comments(self):
+        most_popular_posts = self.annotate(
+            likes_count=Count('likes')).prefetch_related('author').order_by(
+            '-likes_count')
+        most_popular_posts_ids = [post.id for post in most_popular_posts]
+        posts_with_comments = self.filter(
+            id__in=most_popular_posts_ids).annotate(
+            comments_count=Count('comments'))
+        ids_and_comments = posts_with_comments.values_list('id',
+                                                           'comments_count')
+        count_for_id = dict(ids_and_comments)
+        for post in most_popular_posts:
+            post.comments_count = count_for_id[post.id]
+        return most_popular_posts
+
+
+class TagQuerySet(models.QuerySet):
+
+    def popular(self):
+        most_popular_tags = self.annotate(Count('posts')).order_by(
+            'posts__count').reverse()
+        return most_popular_tags
 
 
 class Post(models.Model):
@@ -18,6 +68,8 @@ class Post(models.Model):
     tags = models.ManyToManyField("Tag", related_name="posts",
                                   verbose_name="Теги")
 
+    objects = PostQuerySet.as_manager()
+
     def __str__(self):
         return self.title
 
@@ -32,6 +84,8 @@ class Post(models.Model):
 
 class Tag(models.Model):
     title = models.CharField("Тег", max_length=20, unique=True)
+
+    objects = TagQuerySet.as_manager()
 
     def __str__(self):
         return self.title
