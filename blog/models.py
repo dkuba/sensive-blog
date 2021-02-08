@@ -52,6 +52,9 @@ class TagQuerySet(models.QuerySet):
             "posts__count").reverse()
         return most_popular_tags
 
+    def get_posts_count(self):
+        return self.annotate(Count('posts'))
+
 
 class Post(models.Model):
     title = models.CharField("Заголовок", max_length=200)
